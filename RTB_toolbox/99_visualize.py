@@ -1,4 +1,5 @@
 import pandas
+import time
 import lib.callbacks as call
 
 PATH = call.handle_path("restricted_area.csv")
@@ -19,4 +20,7 @@ objects, env = call.setup_env(panda=True,
                               start = True, 
                               dest = True, 
                               resources=resources)  
-call.robot_move(objects["panda"], env, df_p.values)    
+time.sleep(2)
+call.robot_move(objects, env, df_p.values)    
+env.close()
+del env

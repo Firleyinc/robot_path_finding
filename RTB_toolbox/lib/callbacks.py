@@ -117,7 +117,7 @@ def setup_env(**kwargs):
     - tuple: A tuple containing a dictionary of created objects and the Swift environment.
     """
     env = swift.Swift()
-    env.launch(realtime=True)
+    env.launch(realtime=True, reload=True)
 
     objects = {}
     
@@ -204,7 +204,7 @@ def generate_random_locs(amount: int):
         rand[i] = [random.uniform(-0.5, 0)*_ for _ in np.ones(3)]
     return rand
 
-def robot_move(robot: rtb.models, env: swift.Swift, points: list):
+def robot_move(objects, env: swift.Swift, points: list):
     """
     Move a robot to a series of specified points in Cartesian space.
 
@@ -220,15 +220,37 @@ def robot_move(robot: rtb.models, env: swift.Swift, points: list):
     Returns:
     - None: The function controls the robot's movement in the specified environment.
     """
-    Tep = robot.fkine(robot.q)
-    Tep = robot.ikine_LM(Tep)
+    robot : rtb.models.Panda = objects["panda"]
+    box = Cuboid([1, 1, 1], pose = SE3(1, 0, 0)) 
     dt = 0.05
 
     arrived = False
+    sum1 = 0
+    sum2 = 0
+
+    for i in points:
+        q = robot.ik_GN(SE3.Rt(SO3.Rx(3.14)@SO3.Ry(0.0),i))
+        q = q[0]
+        for instance_box in objects["box"]:
+            print(f'type q: {type(q)}, q: {q}')
+            print(f'type robot.q: {type(robot.q)}, robot.q: {robot.q}')
+            if robot.iscollided(q, instance_box):
+                sum1 += 1
+                print(f'Robot in collision sum1: {sum1}')
+
+
 
     for _,i in enumerate(points):
         while not arrived:
             v, arrived = rtb.p_servo(robot.fkine(robot.q), SE3.Rt(SO3.Rx(3.14)@SO3.Ry(0.0),i), 1)
             robot.qd = np.linalg.pinv(robot.jacobe(robot.q)) @ v
             env.step(dt)
+        for instance_box in objects["box"]:
+            if robot.iscollided(robot.q, instance_box) == True:
+                sum2 += 1
+                print(f'Robot in collision sum2: {sum2}')
+
+        print(f'Robot in collision sum1: {sum1}')
+        print(f'Robot in collision sum2: {sum2}')
+        
         arrived = False
