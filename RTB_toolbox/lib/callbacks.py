@@ -6,7 +6,7 @@ from spatialgeometry import Sphere, Cuboid, CollisionShape
 from spatialmath import SO3, SE3
 import swift
 import roboticstoolbox as rtb
-
+import math
 
 def handle_path(file):
     """
@@ -121,31 +121,49 @@ def setup_env(**kwargs):
 
     objects = {}
     
-    if "start" in kwargs and "resources" in kwargs and kwargs["start"]:
-        start = Sphere(radius=kwargs["resources"]["radius"], color=kwargs["resources"]["start_color"])
-        update_obj(start, kwargs["resources"]["start_loc"])
-        objects["start"] = start
-        env.add(start)
-    if "dest" in kwargs and "resources" in kwargs and kwargs["dest"]:
-        dest = Sphere(radius=kwargs["resources"]["radius"], color=kwargs["resources"]["dest_color"])
-        update_obj(dest, kwargs["resources"]["dest_loc"])
-        objects["dest"] = dest
-        env.add(dest)
-    if "boxes" in kwargs and "resources" in kwargs and kwargs["boxes"]:
-        box = [Cuboid(scale=_scale, collision = True, color=(255, 10, 10)) for _scale in kwargs["resources"]["box_info"][:,0:3]/10]
-        pos = [[_xyz[0], _xyz[1], _xyz[2]] for i, _xyz in enumerate(kwargs["resources"]["box_info"][:,3:6]) ]
-        for i,_ in enumerate(box):
-            update_obj(box[i], pos[i])
-            env.add(box[i])
-            pass
-        objects["box"] = box
     if "panda" in kwargs and kwargs["panda"]:
         panda = rtb.models.Panda()
         panda.q = panda.qr
         env.add(panda)
         objects["panda"] = panda
-
+    if "boxes" in kwargs and "resources" in kwargs and kwargs["boxes"]:
+        box = [Cuboid(scale=_scale, collision=True, color=(255, 10, 10)) for _scale in kwargs["resources"]["box_info"][:, 0:3] / 10]
+        pos = [[_xyz[0], _xyz[1], _xyz[2]] for _xyz in kwargs["resources"]["box_info"][:, 3:6]]
+        for i, _ in enumerate(box):
+            update_obj(box[i], pos[i])
+            # Check for collisions with already generated boxes
+            if all(not box[i].iscollided(b) for b in box[:i]) and not panda.iscollided(panda.qr, box[i]):
+                env.add(box[i])
+        objects["box"] = box
+    if "start" in kwargs and "resources" in kwargs and kwargs["start"]:
+        start = Sphere(radius=kwargs["resources"]["radius"], color=kwargs["resources"]["start_color"])
+        if "start_loc" in kwargs:
+            update_obj(start, kwargs["resources"]["start_loc"])
+        else:
+            loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
+            update_obj(start, loc)
+        while not all(not start.iscollided(b) for b in box) and not panda.iscollided(panda.qr, start):
+            loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
+            update_obj(start, loc)       
+        # Check for collisions with boxes
+        env.add(start)
+        objects["start"] = start
+    if "dest" in kwargs and "resources" in kwargs and kwargs["dest"]:
+        dest = Sphere(radius=kwargs["resources"]["radius"], color=kwargs["resources"]["dest_color"])
+        if "dest_loc" in kwargs:
+            update_obj(dest, kwargs["resources"]["dest_loc"])
+        else:
+            loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
+            update_obj(dest, loc)
+        while not all(not dest.iscollided(b) for b in box) and not panda.iscollided(panda.qr, dest):
+            loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
+            update_obj(dest, loc)       
+        # Check for collisions with boxes
+        env.add(dest)
+        objects["dest"] = dest
     return objects, env
+
+
 
 def generate_csv(filename, **kwargs):
     """

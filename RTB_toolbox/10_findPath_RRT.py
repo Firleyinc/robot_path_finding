@@ -6,7 +6,6 @@ import lib.callbacks as call
 #PATH = call.handle_path("restricted_area.csv")
 PATH = call.handle_path("restricted_area.csv")
 df = pandas.read_csv(PATH)
-
 limits = [[-0.4, 0.4], [-0.6, 0.6], [0.0, 0.7]]
 resources = {"radius":                  0.04,
              "point_to_check_color":    (0, 0, 0),
@@ -16,9 +15,11 @@ resources = {"radius":                  0.04,
              "dest_color":              (0, 0, 255),
              "dest_loc":                [np.random.uniform(limits[index][0], limits[index][1]) for index,_ in enumerate(limits)],
              "iterations":              10,
-             "box_info":                df.values}
+             "box_info":                df.values,
+             "limits":                  limits}
 
-objects, env = call.setup_env(start=True, 
+objects, env = call.setup_env(panda = True,
+                              start=True, 
                               dest = True, 
                               boxes = True,
                               resources = resources)

@@ -1,10 +1,11 @@
 import lib.callbacks as call
 import random
 
-limits_dict =   {"box_size":    [5/2,   7/2],
+# limits_dict =   {"box_size":    [10/2,   15/2],
+limits_dict =   {"box_size":    [2/10,   5/2],
                 "x":            [-0.7,  0.7],
                 "y":            [-0.7,  0.7],
-                "z":            [-1.0,  0.8]}
+                "z":            [0.0,  1.2]}
 
 limits = [limits_dict['box_size'],
           limits_dict['box_size'],
