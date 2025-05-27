@@ -206,11 +206,15 @@ def generate_csv(filename, **kwargs):
                 csv_writer.writerow(row)
         if "array" in kwargs:
             for index, object in enumerate(kwargs['array']):
-                x = object[0]
-                y = object[1]
-                z = object[2]
+                x = object[0][0]
+                y = object[0][1]
+                z = object[0][2]
 
-                row = [x, y, z]
+                r = object[1][0]
+                p = object[1][1]
+                y = object[1][2]
+
+                row = [x, y, z, r, p, y]
                 csv_writer.writerow(row)
 
 def generate_random_locs(amount: int):

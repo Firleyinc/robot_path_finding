@@ -2,7 +2,7 @@ import pandas
 from spatialgeometry import Sphere
 import numpy as np
 import lib.callbacks as call
-from spatialmath import SO3, quaternion
+from spatialmath import SO3, SE3
 
 #PATH = call.handle_path("restricted_area.csv")
 PATH = call.handle_path("restricted_area.csv")
@@ -28,14 +28,14 @@ objects, env = call.setup_env(panda = True,
 current = Sphere(radius=resources["radius"], color=(255,255,0))
 
 Togo = [objects['start']]
-# Togo_list.append(np.hstack((Temp.T[0:3, 3].flatten())))
-# [x, y, z, r, p, y]
-Togo_list = [np.array(objects['start'].T[0:3,3]), SO3(objects['start'].T[:3, :3]).rpy(order='xyz', unit='deg')]
+Togo_list = [np.array(objects['start'].T[0:3,3])]
 Temp = objects['start']
 cnt = 0
 in_collision = False
 
 while True:
+    # Position check
+    print('trying position')
     for i in range(resources["iterations"]):
         best_pose = Togo[cnt].T[0:3,3]
         center = call.generate_point(best_pose)
@@ -56,14 +56,21 @@ while True:
                 break
         else:
             env.remove(current)
+        # Orientation check
+    print('trying orientation')
+    for i in range(resources["iterations"]):
+        rot = SO3()
+        q = objects["panda"].ik_GN(SE3.Rt(rot, center))
+        q = q[0]
+        for instance_box in objects["box"]:
+            if objects["panda"].iscollided(q, instance_box):
+                break
     cnt += 1
     Togo.append(Temp)
-    # TUTAJ
-    # [x, y, z, r, p, y]
-    Togo_list.append(np.hstack((Temp.T[0:3, 3].flatten(), SO3(Temp.T[:3, :3]).rpy(order='xyz', unit='deg')[3:6])))
+    Togo_list.append(np.array(Temp.T[0:3,3]))
     env.add(Togo[-1])
     if objects['dest'].iscollided(Temp):
-        headers = ['x', 'y', 'z', 'r', 'p', 'y']
+        headers = ['x', 'y', 'z']
         PATH = call.handle_path("points.csv")
         call.generate_csv(PATH, headers=headers, array=Togo_list)
         break
