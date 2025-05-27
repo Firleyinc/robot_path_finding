@@ -136,28 +136,38 @@ def setup_env(**kwargs):
                 env.add(box[i])
         objects["box"] = box
     if "start" in kwargs and "resources" in kwargs and kwargs["start"]:
+        start_coll_robot = Sphere(radius=3*kwargs["resources"]["radius"], color=kwargs["resources"]["start_color"])
+        start_coll_box = Sphere(radius=2*kwargs["resources"]["radius"], color=kwargs["resources"]["start_color"])
         start = Sphere(radius=kwargs["resources"]["radius"], color=kwargs["resources"]["start_color"])
-        if "start_loc" in kwargs:
-            update_obj(start, kwargs["resources"]["start_loc"])
-        else:
+        loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
+        if "start_loc" in kwargs["resources"]:
+            loc = kwargs["resources"]["start_loc"]
+        update_obj(start, loc)
+        update_obj(start_coll_robot, loc)
+        update_obj(start_coll_box, loc)
+        while not all(not start_coll_box.iscollided(b) for b in box) and not panda.iscollided(panda.qr, start_coll_robot):
             loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
             update_obj(start, loc)
-        while not all(not start.iscollided(b) for b in box) and not panda.iscollided(panda.qr, start):
-            loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
-            update_obj(start, loc)       
+            update_obj(start_coll_robot, loc)       
+            update_obj(start_coll_box, loc)
         # Check for collisions with boxes
         env.add(start)
         objects["start"] = start
     if "dest" in kwargs and "resources" in kwargs and kwargs["dest"]:
+        dest_coll_robot = Sphere(radius=3*kwargs["resources"]["radius"], color=kwargs["resources"]["dest_color"])
+        dest_coll_box = Sphere(radius=2*kwargs["resources"]["radius"], color=kwargs["resources"]["dest_color"])
         dest = Sphere(radius=kwargs["resources"]["radius"], color=kwargs["resources"]["dest_color"])
-        if "dest_loc" in kwargs:
-            update_obj(dest, kwargs["resources"]["dest_loc"])
-        else:
+        loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
+        if "dest_loc" in kwargs["resources"]:
+            loc = kwargs["resources"]["dest_loc"]
+        update_obj(dest, loc)
+        update_obj(dest_coll_robot, loc)
+        update_obj(dest_coll_box, loc)
+        while not all(not dest_coll_box.iscollided(b) for b in box) and not panda.iscollided(panda.qr, dest):
             loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
             update_obj(dest, loc)
-        while not all(not dest.iscollided(b) for b in box) and not panda.iscollided(panda.qr, dest):
-            loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
-            update_obj(dest, loc)       
+            update_obj(dest_coll_robot, loc)      
+            update_obj(dest_coll_box, loc)
         # Check for collisions with boxes
         env.add(dest)
         objects["dest"] = dest
