@@ -67,7 +67,7 @@ def generate_point(p):
     Returns:
     - list: A list containing the x, y, and z coordinates of the generated point.
     """
-    radius = 0.1#np.random.uniform(0, 1)
+    radius = 0.03#np.random.uniform(0, 1)
 
     # Generate random spherical coordinates
     theta = np.random.uniform(0, 2 * np.pi)
@@ -79,6 +79,57 @@ def generate_point(p):
     z = p[2] + radius * np.cos(phi)
 
     return [x, y, z]
+
+def joints_changed_significantly(q1, q2, threshold=0.01):
+    """
+    Check if the values on every joint did not change much.
+    Parameters:
+    q1, q2: Arrays representing joint values.
+    threshold: Maximum allowed change for each joint.
+    Returns:
+    True if any joint changed significantly, False otherwise.
+    """
+    return any(abs(a - b) > threshold for a, b in zip(q1, q2))
+
+def generate_orientation(last_orientation=None, max_change=np.pi / 4):
+    """
+    Generate a random orientation in 3D space with a constraint on the maximum change.
+
+    This function generates a random orientation represented as roll, pitch, and yaw
+    angles. If a last orientation is provided, the new orientation will not deviate
+    from it by more than the specified maximum change in any angle.
+
+    Parameters:
+    - last_orientation (SO3, optional): The last orientation as an SO3 object. Default is None.
+    - max_change (float, optional): The maximum allowable change in radians for each angle. Default is π/4.
+
+    Returns:
+    - SO3: A new orientation as an SO3 object.
+    """
+    if last_orientation is None:
+        roll = np.random.uniform(-np.pi, np.pi)
+        pitch = np.random.uniform(-np.pi / 2, np.pi / 2)
+        yaw = np.random.uniform(-np.pi, np.pi)
+    else:
+        last_rpy = last_orientation.rpy(order='xyz', unit='deg')
+        roll = np.clip(np.random.uniform(last_rpy[0] - max_change, last_rpy[0] + max_change), -np.pi, np.pi)
+        pitch = np.clip(np.random.uniform(last_rpy[1] - max_change, last_rpy[1] + max_change), -np.pi / 2, np.pi / 2)
+        yaw = np.clip(np.random.uniform(last_rpy[2] - max_change, last_rpy[2] + max_change), -np.pi, np.pi)
+
+    return SO3.RPY([roll, pitch, yaw], order='xyz', unit='rad')
+
+# def generate_orientation():
+#     """
+#     Generate a random orientation in 3D space.
+#     This function generates a random orientation represented as roll, pitch, and yaw
+#     angles. The angles are uniformly distributed within their respective ranges.
+#     Returns:
+#     - list: A list containing the roll, pitch, and yaw angles in radians.
+#     """
+#     roll = np.random.uniform(-np.pi, np.pi)
+#     pitch = np.random.uniform(-np.pi / 2, np.pi / 2)
+#     yaw = np.random.uniform(-np.pi, np.pi)
+#     return SO3.RPY([roll, pitch, yaw])
 
 def update_obj(box: CollisionShape, pos: list):
     """
@@ -141,15 +192,16 @@ def setup_env(**kwargs):
         start = Sphere(radius=kwargs["resources"]["radius"], color=kwargs["resources"]["start_color"])
         loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
         if "start_loc" in kwargs["resources"]:
-            loc = kwargs["resources"]["start_loc"]
+            loc = kwargs["resources"]["start_loc"][:3]
         update_obj(start, loc)
         update_obj(start_coll_robot, loc)
         update_obj(start_coll_box, loc)
-        while not all(not start_coll_box.iscollided(b) for b in box) and not panda.iscollided(panda.qr, start_coll_robot):
+        while not all(not start_coll_box.iscollided(b) for b in box) or (panda.iscollided(panda.qr, start_coll_robot)):
             loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
             update_obj(start, loc)
             update_obj(start_coll_robot, loc)       
             update_obj(start_coll_box, loc)
+            # env.add(start_coll_robot)
         # Check for collisions with boxes
         env.add(start)
         objects["start"] = start
@@ -159,15 +211,16 @@ def setup_env(**kwargs):
         dest = Sphere(radius=kwargs["resources"]["radius"], color=kwargs["resources"]["dest_color"])
         loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
         if "dest_loc" in kwargs["resources"]:
-            loc = kwargs["resources"]["dest_loc"]
+            loc = kwargs["resources"]["dest_loc"][:3]
         update_obj(dest, loc)
         update_obj(dest_coll_robot, loc)
         update_obj(dest_coll_box, loc)
-        while not all(not dest_coll_box.iscollided(b) for b in box) and not panda.iscollided(panda.qr, dest):
+        while not all(not dest_coll_box.iscollided(b) for b in box) or (panda.iscollided(panda.qr, dest_coll_robot)):
             loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
             update_obj(dest, loc)
-            update_obj(dest_coll_robot, loc)      
+            update_obj(dest_coll_robot, loc)       
             update_obj(dest_coll_box, loc)
+            # env.add(start_coll_robot)
         # Check for collisions with boxes
         env.add(dest)
         objects["dest"] = dest
@@ -206,15 +259,17 @@ def generate_csv(filename, **kwargs):
                 csv_writer.writerow(row)
         if "array" in kwargs:
             for index, object in enumerate(kwargs['array']):
-                x = object[0][0]
-                y = object[0][1]
-                z = object[0][2]
+                x = object[0]
+                y = object[1]
+                z = object[2]
 
-                r = object[1][0]
-                p = object[1][1]
-                y = object[1][2]
+                r = object[3]
+                p = object[4]
+                y = object[5]
 
-                row = [x, y, z, r, p, y]
+
+                # row = [x, y, z, r, p, y]
+                row = [object[0], object[1], object[2], object[3], object[4], object[5]]
                 csv_writer.writerow(row)
 
 def generate_random_locs(amount: int):
@@ -253,36 +308,19 @@ def robot_move(objects, env: swift.Swift, points: list):
     - None: The function controls the robot's movement in the specified environment.
     """
     robot : rtb.models.Panda = objects["panda"]
-    box = Cuboid([1, 1, 1], pose = SE3(1, 0, 0)) 
     dt = 0.05
 
     arrived = False
-    sum1 = 0
     sum2 = 0
-
-    for i in points:
-        q = robot.ik_GN(SE3.Rt(SO3.Rx(3.14)@SO3.Ry(0.0),i))
-        q = q[0]
-        for instance_box in objects["box"]:
-            print(f'type q: {type(q)}, q: {q}')
-            print(f'type robot.q: {type(robot.q)}, robot.q: {robot.q}')
-            if robot.iscollided(q, instance_box):
-                sum1 += 1
-                print(f'Robot in collision sum1: {sum1}')
-
-
 
     for _,i in enumerate(points):
         while not arrived:
-            v, arrived = rtb.p_servo(robot.fkine(robot.q), SE3.Rt(SO3.Rx(3.14)@SO3.Ry(0.0),i), 1)
+            v, arrived = rtb.p_servo(robot.fkine(robot.q), SE3.Rt(SO3.RPY(i[3:], order='xyz', unit='deg'),i[:3]), 1)
             robot.qd = np.linalg.pinv(robot.jacobe(robot.q)) @ v
             env.step(dt)
         for instance_box in objects["box"]:
             if robot.iscollided(robot.q, instance_box) == True:
                 sum2 += 1
-                print(f'Robot in collision sum2: {sum2}')
-
-        print(f'Robot in collision sum1: {sum1}')
-        print(f'Robot in collision sum2: {sum2}')
+                print(f'Robot in collision: {sum2}')
         
         arrived = False

@@ -3,6 +3,8 @@ from spatialgeometry import Sphere
 import numpy as np
 import lib.callbacks as call
 from spatialmath import SO3, SE3
+import roboticstoolbox as rtb
+import time
 
 #PATH = call.handle_path("restricted_area.csv")
 PATH = call.handle_path("restricted_area.csv")
@@ -28,25 +30,34 @@ objects, env = call.setup_env(panda = True,
 current = Sphere(radius=resources["radius"], color=(255,255,0))
 
 Togo = [objects['start']]
-Togo_list = [np.array(objects['start'].T[0:3,3])]
+Togo_list = [np.concatenate((
+    objects['start'].T[0:3, 3],
+    SO3(SE3.Rt(SO3.Rx(3.14) @ SO3.Ry(0.0)).R).rpy(order='xyz', unit='deg')
+))]
 Temp = objects['start']
 cnt = 0
 in_collision = False
 
 while True:
     # Position check
+    q = [0, 0, 0]
     print('trying position')
     for i in range(resources["iterations"]):
         best_pose = Togo[cnt].T[0:3,3]
         center = call.generate_point(best_pose)
         current = Sphere(radius=resources["radius"], color=(10,10,10))
+        current_coll_robot = Sphere(radius=5*resources["radius"], color=(10,10,10))
+        current_coll_box = Sphere(radius=2*resources["radius"], color=(10,10,10))
         call.update_obj(current, center)
+        call.update_obj(current_coll_robot, center)
+        call.update_obj(current_coll_box, center)
         for instance_box in objects["box"]:
-            if current.iscollided(instance_box) == True:
+            if current_coll_box.iscollided(instance_box) or objects["panda"].iscollided(q[:2], current_coll_robot):
                 in_collision = True
                 break
             else:
                 in_collision = False
+        # env.add(current_coll_robot)
         env.add(current)
         if (call.euclidean_distance(current.T[0:3,3], objects['dest'].T[0:3,3]) < call.euclidean_distance(Temp.T[0:3,3], objects['dest'].T[0:3,3])) and not in_collision:
             if Temp!=objects['start']:
@@ -56,22 +67,38 @@ while True:
                 break
         else:
             env.remove(current)
-        # Orientation check
-    print('trying orientation')
-    for i in range(resources["iterations"]):
-        rot = SO3()
-        q = objects["panda"].ik_GN(SE3.Rt(rot, center))
-        q = q[0]
-        for instance_box in objects["box"]:
-            if objects["panda"].iscollided(q, instance_box):
-                break
-    cnt += 1
+    # Orientation check
     Togo.append(Temp)
-    Togo_list.append(np.array(Temp.T[0:3,3]))
+    xyz = Temp.T[:3, 3]
+    print('trying orientation')
+    rot_last = SO3.RPY(Togo_list[-1][3:], order='xyz', unit='deg')
+    q = objects["panda"].ik_GN(SE3.Rt(rot_last, xyz))
+    q = q[0]
+    q_last = q
+    Final = SE3.Rt(rot_last, xyz)
+    while any(objects["panda"].iscollided(q, instance_box) for instance_box in objects["box"]) or call.joints_changed_significantly(q, q_last, 0.5):
+        rot = call.generate_orientation(rot_last)
+        q_last = q
+        q = objects["panda"].ik_GN(SE3.Rt(rot, xyz))
+        q = q[0]
+        Final = SE3.Rt(rot, xyz)
+    panda = rtb.models.Panda()
+    panda.q = q
+    env.add(panda)
+    cnt += 1
+#     Togo_list.append(np.concatenate((
+#     xyz.flatten(),  # [x, y, z]
+#     SO3(Temp.T[:3, :3]).rpy(order='xyz', unit='deg')  # [r, p, y]
+# )))
+    Togo_list.append(np.concatenate((
+    Final.t,  # [x, y, z]
+    SO3(Final.R).rpy(order='xyz', unit='deg')  # [r, p, y]
+)))
     env.add(Togo[-1])
     if objects['dest'].iscollided(Temp):
-        headers = ['x', 'y', 'z']
+        headers = ['x', 'y', 'z', 'r', 'p', 'y']
         PATH = call.handle_path("points.csv")
         call.generate_csv(PATH, headers=headers, array=Togo_list)
         break
 print(f"The point has arrived to its destination with {cnt} itterations")
+time.sleep(100)

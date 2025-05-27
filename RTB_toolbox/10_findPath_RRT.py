@@ -30,7 +30,11 @@ current = Sphere(radius=resources["radius"], color=(255,255,0))
 Togo = [objects['start']]
 # Togo_list.append(np.hstack((Temp.T[0:3, 3].flatten())))
 # [x, y, z, r, p, y]
-Togo_list = [np.array(objects['start'].T[0:3,3]), SO3(objects['start'].T[:3, :3]).rpy(order='xyz', unit='deg')]
+# Togo_list = [np.array(objects['start'].T[0:3,3]), SO3(objects['start'].T[:3, :3]).rpy(order='xyz', unit='deg')]
+Togo_list = [np.concatenate((
+    objects['start'].T[0:3, 3],
+    SO3(objects['start'].T[:3, :3]).rpy(order='xyz', unit='deg')
+))]
 Temp = objects['start']
 cnt = 0
 in_collision = False
@@ -60,7 +64,11 @@ while True:
     Togo.append(Temp)
     # TUTAJ
     # [x, y, z, r, p, y]
-    Togo_list.append(np.hstack((Temp.T[0:3, 3].flatten(), SO3(Temp.T[:3, :3]).rpy(order='xyz', unit='deg')[3:6])))
+    #Togo_list.append(np.hstack((Temp.T[0:3, 3].flatten(), SO3(Temp.T[:3, :3]).rpy(order='xyz', unit='deg')[3:6])))
+    Togo_list.append(np.concatenate((
+    Temp.T[0:3, 3].flatten(),  # [x, y, z]
+    SO3(Temp.T[:3, :3]).rpy(order='xyz', unit='deg')  # [r, p, y]
+)))
     env.add(Togo[-1])
     if objects['dest'].iscollided(Temp):
         headers = ['x', 'y', 'z', 'r', 'p', 'y']
