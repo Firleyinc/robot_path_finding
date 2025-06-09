@@ -6,6 +6,7 @@ from spatialgeometry import Sphere, Cuboid, CollisionShape
 from spatialmath import SO3, SE3
 import swift
 import roboticstoolbox as rtb
+from roboticstoolbox.tools import jtraj
 import math
 
 def handle_path(file):
@@ -54,7 +55,7 @@ def euclidean_distance(point1, point2):
     
     return distance
 
-def generate_point(p):
+def generate_point(p, radius = 0.03):
     """
     Generate a random point in 3D space around a given point.
 
@@ -67,8 +68,6 @@ def generate_point(p):
     Returns:
     - list: A list containing the x, y, and z coordinates of the generated point.
     """
-    radius = 0.03#np.random.uniform(0, 1)
-
     # Generate random spherical coordinates
     theta = np.random.uniform(0, 2 * np.pi)
     phi = np.random.uniform(0, np.pi)
@@ -291,7 +290,7 @@ def generate_random_locs(amount: int):
         rand[i] = [random.uniform(-0.5, 0)*_ for _ in np.ones(3)]
     return rand
 
-def robot_move(objects, env: swift.Swift, points: list):
+def robot_move(objects, env: swift.Swift, points: list, joint_q=False):
     """
     Move a robot to a series of specified points in Cartesian space.
 
@@ -308,19 +307,32 @@ def robot_move(objects, env: swift.Swift, points: list):
     - None: The function controls the robot's movement in the specified environment.
     """
     robot : rtb.models.Panda = objects["panda"]
-    dt = 0.05
+    dt = 0.01
 
-    arrived = False
     sum2 = 0
 
-    for _,i in enumerate(points):
-        while not arrived:
-            v, arrived = rtb.p_servo(robot.fkine(robot.q), SE3.Rt(SO3.RPY(i[3:], order='xyz', unit='deg'),i[:3]), 1)
-            robot.qd = np.linalg.pinv(robot.jacobe(robot.q)) @ v
-            env.step(dt)
-        for instance_box in objects["box"]:
-            if robot.iscollided(robot.q, instance_box) == True:
-                sum2 += 1
-                print(f'Robot in collision: {sum2}')
-        
+    if joint_q:
+        time = np.array([i*dt for i in range(0, 100)])
+        for _,i in enumerate(points):
+            traj = jtraj(robot.q,  i, time)
+            for vel in traj.qd:
+                vel = np.nan_to_num(vel, nan=0.0)
+                robot.qd = vel
+                env.step(dt)
+                for instance_box in objects["box"]:
+                    if robot.iscollided(robot.q, instance_box) == True:
+                        sum2 += 1
+                        print(f'Robot in collision: {sum2}')
+    else:
         arrived = False
+        for _,i in enumerate(points):
+            while not arrived:
+                v, arrived = rtb.p_servo(robot.fkine(robot.q), SE3.Rt(SO3.RPY(i[3:], order='xyz', unit='deg'),i[:3]), gain=0.1, threshold=0.01)
+                robot.qd = np.linalg.pinv(robot.jacobe(robot.q)) @ v
+                env.step(dt)
+            for instance_box in objects["box"]:
+                if robot.iscollided(robot.q, instance_box) == True:
+                    sum2 += 1
+                    print(f'Robot in collision: {sum2}')
+            
+            arrived = False

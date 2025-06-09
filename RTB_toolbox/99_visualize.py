@@ -23,6 +23,6 @@ objects, env = call.setup_env(panda=True,
                               dest = True, 
                               resources=resources)  
 time.sleep(2)
-call.robot_move(objects, env, df_p.values)    
+call.robot_move(objects, env, df_p.values, joint_q=True)    
 env.close()
 del env
