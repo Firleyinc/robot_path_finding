@@ -6,8 +6,24 @@ from spatialgeometry import Sphere, Cuboid, CollisionShape
 from spatialmath import SO3, SE3
 import swift
 import roboticstoolbox as rtb
-from roboticstoolbox.tools import jtraj
+from roboticstoolbox.tools import jtraj, quintic
 import math
+
+class Node:
+    def __init__(self, x, y, z, rot_matrix = None, parent=None, cost=0.0, q=None):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.rot_matrix = rot_matrix
+        self.parent = parent
+        self.cost = cost
+        self.q = q 
+
+    def pose(self):
+        return np.array([self.x, self.y, self.z])
+
+    def __lt__(self, other):
+        return self.cost < other.cost  # needed for heapq
 
 def handle_path(file):
     """
@@ -90,7 +106,7 @@ def joints_changed_significantly(q1, q2, threshold=0.01):
     """
     return any(abs(a - b) > threshold for a, b in zip(q1, q2))
 
-def generate_orientation(last_orientation=None, max_change=np.pi / 4):
+def generate_orientation(last_orientation=None, max_change=2*np.pi):
     """
     Generate a random orientation in 3D space with a constraint on the maximum change.
 
@@ -290,6 +306,44 @@ def generate_random_locs(amount: int):
         rand[i] = [random.uniform(-0.5, 0)*_ for _ in np.ones(3)]
     return rand
 
+def try_positions(Togo, cnt, resources, objects, env, Temp, search_radius=0.1):
+    """
+    Attempts to generate a new position for the robot, checking for collisions and proximity to the destination.
+    Updates Temp if a better, collision-free position is found.
+    Returns the updated Temp.
+    """
+    in_collision = False
+    for i in range(resources["iterations"]):
+        best_pose = Togo[cnt].T[0:3,3]
+        center = generate_point(best_pose, radius=search_radius)
+        current = Sphere(radius=resources["radius"], color=(10,10,10))
+        current_coll_robot = Sphere(radius=3*resources["radius"], color=(10,10,10))
+        current_coll_box = Sphere(radius=3*resources["radius"], color=(10,10,10))
+        update_obj(current, center)
+        update_obj(current_coll_robot, center)
+        update_obj(current_coll_box, center)
+        for instance_box in objects["box"]:
+            if current_coll_box.iscollided(instance_box) or \
+            objects["panda"][0].iscollided(current_coll_robot) or \
+            objects["panda"][1].iscollided(current_coll_robot) or \
+            objects["panda"][2].iscollided(current_coll_robot) or \
+            objects["panda"][3].iscollided(current_coll_robot):
+                in_collision = True
+                break
+            else:
+                in_collision = False
+        # env.add(current_coll_robot)
+        env.add(current)
+        if (euclidean_distance(current.T[0:3,3], objects['dest'].T[0:3,3]) < euclidean_distance(Temp.T[0:3,3], objects['dest'].T[0:3,3])) and not in_collision:
+            if Temp!=objects['start']:
+                env.remove(Temp)
+            Temp = current
+            if objects['dest'].iscollided(Temp):
+                break
+        else:
+            env.remove(current)
+    return Temp
+
 def robot_move(objects, env: swift.Swift, points: list, joint_q=False):
     """
     Move a robot to a series of specified points in Cartesian space.
@@ -314,15 +368,16 @@ def robot_move(objects, env: swift.Swift, points: list, joint_q=False):
     if joint_q:
         time = np.array([i*dt for i in range(0, 100)])
         for _,i in enumerate(points):
+            # traj = quintic(robot.q,  i, time)
             traj = jtraj(robot.q,  i, time)
             for vel in traj.qd:
                 vel = np.nan_to_num(vel, nan=0.0)
                 robot.qd = vel
                 env.step(dt)
-                for instance_box in objects["box"]:
-                    if robot.iscollided(robot.q, instance_box) == True:
-                        sum2 += 1
-                        print(f'Robot in collision: {sum2}')
+                # for instance_box in objects["box"]:
+                #     if robot.iscollided(robot.q, instance_box) == True:
+                #         sum2 += 1
+                #         print(f'Robot in collision: {sum2}')
     else:
         arrived = False
         for _,i in enumerate(points):
