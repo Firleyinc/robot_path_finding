@@ -10,6 +10,31 @@ This repository contains Python scripts for a robot path planning system. The sy
 
 ![GIF of presentation](Resources/SI_Projekt.gif)
 
+# How to run the code
+1. Clone the repository:
+1. Download python 3.8
+    ```bash
+    sudo add-apt-repository ppa:deadsnakes/ppa -y
+    sudo apt update
+    sudo apt install python3.8
+    ```
+1. Install  venv and distutils for python 3.8 and create venv, install build tools for python 3.8 (needed for rtb)
+    ```bash
+    sudo apt install python3.8-venv python3.8-distutils
+    python3.8 -m venv .venv
+    sudo apt update
+    sudo apt install build-essential python3.8-dev python3.8-venv
+    source .venv/bin/activate
+    ```
+1. pip install requirements and run the scripts
+    ```bash
+    cd Resources
+    pip install -r requirements.txt
+    cd ../RTB_toolbox/
+    python3 12_findPathRRT.py
+    python3 99_visualize.py
+    ```
+
 ## Table of Contents
 
 - [Files](#files)

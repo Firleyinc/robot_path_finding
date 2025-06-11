@@ -9,6 +9,9 @@ import roboticstoolbox as rtb
 from roboticstoolbox.tools import jtraj, quintic
 import math
 
+COLL_BOX_RADIUS_MULTIPLIER = 2
+COLL_ROBOT_RADIUS_MULTIPLIER = 3
+
 class Node:
     def __init__(self, x, y, z, rot_matrix = None, parent=None, cost=0.0, q=None):
         self.x = x
@@ -104,32 +107,44 @@ def joints_changed_significantly(q1, q2, threshold=0.01):
     Returns:
     True if any joint changed significantly, False otherwise.
     """
-    return any(abs(a - b) > threshold for a, b in zip(q1, q2))
+    # Use different thresholds for the first 3 joints and the last 3 joints
+    thresholds = [threshold/2] * 3 + [min(threshold, 3.14)] * (len(q1) - 3)
+    return any(abs(a - b) > t for a, b, t in zip(q1, q2, thresholds))
 
-def generate_orientation(last_orientation=None, max_change=2*np.pi):
+def generate_orientation(last_orientation=None, max_change=2*np.pi, limits=None):
     """
-    Generate a random orientation in 3D space with a constraint on the maximum change.
-
-    This function generates a random orientation represented as roll, pitch, and yaw
-    angles. If a last orientation is provided, the new orientation will not deviate
-    from it by more than the specified maximum change in any angle.
+    Generate a random orientation in 3D space with a constraint on the maximum change and limits.
 
     Parameters:
     - last_orientation (SO3, optional): The last orientation as an SO3 object. Default is None.
-    - max_change (float, optional): The maximum allowable change in radians for each angle. Default is π/4.
+    - max_change (float, optional): The maximum allowable change in radians for each angle.
+    - limits (list or tuple, optional): List/tuple of (min, max) for roll, pitch, yaw in radians.
 
     Returns:
     - SO3: A new orientation as an SO3 object.
     """
+    # Default limits if not provided: roll [-pi, pi], pitch [-pi/2, pi/2], yaw [-pi, pi]
+    if limits is None:
+        limits = [(-np.pi, np.pi), (-np.pi/2, np.pi/2), (-np.pi, np.pi)]
+
     if last_orientation is None:
-        roll = np.random.uniform(-np.pi, np.pi)
-        pitch = np.random.uniform(-np.pi / 2, np.pi / 2)
-        yaw = np.random.uniform(-np.pi, np.pi)
+        roll = np.random.uniform(limits[0][0], limits[0][1])
+        pitch = np.random.uniform(limits[1][0], limits[1][1])
+        yaw = np.random.uniform(limits[2][0], limits[2][1])
     else:
-        last_rpy = last_orientation.rpy(order='xyz', unit='deg')
-        roll = np.clip(np.random.uniform(last_rpy[0] - max_change, last_rpy[0] + max_change), -np.pi, np.pi)
-        pitch = np.clip(np.random.uniform(last_rpy[1] - max_change, last_rpy[1] + max_change), -np.pi / 2, np.pi / 2)
-        yaw = np.clip(np.random.uniform(last_rpy[2] - max_change, last_rpy[2] + max_change), -np.pi, np.pi)
+        last_rpy = last_orientation.rpy(order='xyz', unit='rad')
+        roll = np.clip(
+            np.random.uniform(last_rpy[0] - max_change, last_rpy[0] + max_change),
+            limits[0][0], limits[0][1]
+        )
+        pitch = np.clip(
+            np.random.uniform(last_rpy[1] - max_change, last_rpy[1] + max_change),
+            limits[1][0], limits[1][1]
+        )
+        yaw = np.clip(
+            np.random.uniform(last_rpy[2] - max_change, last_rpy[2] + max_change),
+            limits[2][0], limits[2][1]
+        )
 
     return SO3.RPY([roll, pitch, yaw], order='xyz', unit='rad')
 
@@ -202,8 +217,8 @@ def setup_env(**kwargs):
                 env.add(box[i])
         objects["box"] = box
     if "start" in kwargs and "resources" in kwargs and kwargs["start"]:
-        start_coll_robot = Sphere(radius=3*kwargs["resources"]["radius"], color=kwargs["resources"]["start_color"])
-        start_coll_box = Sphere(radius=2*kwargs["resources"]["radius"], color=kwargs["resources"]["start_color"])
+        start_coll_robot = Sphere(radius=COLL_ROBOT_RADIUS_MULTIPLIER*kwargs["resources"]["radius"], color=kwargs["resources"]["start_color"])
+        start_coll_box = Sphere(radius=COLL_BOX_RADIUS_MULTIPLIER*kwargs["resources"]["radius"], color=kwargs["resources"]["start_color"])
         start = Sphere(radius=kwargs["resources"]["radius"], color=kwargs["resources"]["start_color"])
         loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
         if "start_loc" in kwargs["resources"]:
@@ -221,8 +236,8 @@ def setup_env(**kwargs):
         env.add(start)
         objects["start"] = start
     if "dest" in kwargs and "resources" in kwargs and kwargs["dest"]:
-        dest_coll_robot = Sphere(radius=3*kwargs["resources"]["radius"], color=kwargs["resources"]["dest_color"])
-        dest_coll_box = Sphere(radius=2*kwargs["resources"]["radius"], color=kwargs["resources"]["dest_color"])
+        dest_coll_robot = Sphere(radius=COLL_ROBOT_RADIUS_MULTIPLIER*kwargs["resources"]["radius"], color=kwargs["resources"]["dest_color"])
+        dest_coll_box = Sphere(radius=COLL_BOX_RADIUS_MULTIPLIER*kwargs["resources"]["radius"], color=kwargs["resources"]["dest_color"])
         dest = Sphere(radius=kwargs["resources"]["radius"], color=kwargs["resources"]["dest_color"])
         loc = [np.random.uniform(kwargs["resources"]["limits"][index][0], kwargs["resources"]["limits"][index][1]) for index, _ in enumerate(kwargs["resources"]["limits"])]
         if "dest_loc" in kwargs["resources"]:
