@@ -7,10 +7,17 @@ import roboticstoolbox as rtb
 import time
 from lib.rrt import find_tree
 from lib.callbacks import Node
+import argparse
 
-PATH = call.handle_path("restricted_area.csv")
+parser = argparse.ArgumentParser()
+parser.add_argument("-i", help="path to input file with restricted areas.")
+parser.add_argument("-o", help="path to output file with generated points.")
+args = parser.parse_args()
+
+PATH_IN = call.handle_path("restricted_area.csv" if args.i is None else args.i)
+PATH_OUT = call.handle_path("points.csv" if args.o is None else args.o)
 # PATH = call.handle_path("wall.csv")
-df = pandas.read_csv(PATH)
+df = pandas.read_csv(PATH_IN)
 panda_qr = rtb.models.Panda().fkine(rtb.models.Panda().qr).t
 panda_qr = np.array([panda_qr[0], panda_qr[1], panda_qr[2]-0.2])
 limits = [[-0.6, 0.6], [-0.6, 0.6], [0.0, 0.8]]
@@ -48,8 +55,8 @@ path, spheres, _ = find_tree(env,
                              rotation_limits=[[-np.pi*3/2, np.pi*3/2], [-np.pi*3/2, np.pi*3/2], [-np.pi*3/2, np.pi*3/2]])
 
 headers = [f'j_{joint}' for joint in range(0, len(objects["panda"].q))]
-PATH = call.handle_path("points.csv")
-call.generate_csv(PATH, headers=headers, array=[path[i].q for i in range(len(path))])
+
+call.generate_csv(PATH_OUT, headers=headers, array=[path[i].q for i in range(len(path))])
 print(f'Path found with {len(path)} nodes within {len(spheres)} vertices.')
 # print("Press Enter to close the window.")
 # input()
