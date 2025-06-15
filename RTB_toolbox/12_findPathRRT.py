@@ -41,16 +41,16 @@ print(f'Start point: {objects["start"].T[:3,3]}, dest point: {objects["dest"].T[
 
 current = Sphere(radius=resources["radius"], color=(255,255,0))
 
-path, _, _ = find_tree(env, 
-                       resources["limits"], 
-                       objects, 
-                       step_size=0.1, 
-                       rotation_limits=[[-np.pi*3/2, np.pi*3/2], [-np.pi*3/2, np.pi*3/2], [-np.pi*3/2, np.pi*3/2]])
+path, spheres, _ = find_tree(env,
+                             resources["limits"],
+                             objects,
+                             step_size=0.1,
+                             rotation_limits=[[-np.pi*3/2, np.pi*3/2], [-np.pi*3/2, np.pi*3/2], [-np.pi*3/2, np.pi*3/2]])
 
 headers = [f'j_{joint}' for joint in range(0, len(objects["panda"].q))]
 PATH = call.handle_path("points.csv")
 call.generate_csv(PATH, headers=headers, array=[path[i].q for i in range(len(path))])
-print(f'Path found with {len(path)} nodes.')
+print(f'Path found with {len(path)} nodes within {len(spheres)} vertices.')
 # print("Press Enter to close the window.")
 # input()
 
