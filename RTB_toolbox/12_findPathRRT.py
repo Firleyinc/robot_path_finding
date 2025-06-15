@@ -51,8 +51,8 @@ headers = [f'j_{joint}' for joint in range(0, len(objects["panda"].q))]
 PATH = call.handle_path("points.csv")
 call.generate_csv(PATH, headers=headers, array=[path[i].q for i in range(len(path))])
 print(f'Path found with {len(path)} nodes.')
-print("Press Enter to close the window.")
-input()
+# print("Press Enter to close the window.")
+# input()
 
 env.close()
 del env
