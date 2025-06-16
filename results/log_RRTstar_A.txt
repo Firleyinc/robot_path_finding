@@ -1,5 +1,0 @@
-Redirecting script output to file "../results/output_RRTstar_A.txt"
-Timeout set to 300.0 sec.
-Starting time measurment 
-----
-Execution time: 167.779 sec

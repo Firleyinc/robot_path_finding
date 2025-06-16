@@ -33,7 +33,7 @@ resources = {"radius":                  0.04,
             #  "dest_loc":                [np.random.uniform(limits[index][0], limits[index][1]) for index,_ in enumerate(limits)],
             #  "dest_loc":                [0.26, 0.40, 0.69],
             #  "dest_loc":                [-0.35, -0.35, 0.40],
-             "dest_loc":                [-0.49041187, -0.00293996, 0.11924733],
+             "dest_loc":                [-0.19715782, -0.04114254,  0.79557244],
              "iterations":              10,
              "box_info":                df.values,
              "limits":                  limits}

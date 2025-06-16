@@ -104,7 +104,7 @@ def find_tree(env, bounds, objects, step_size=0.1, rotation_limits=None):
     Updates Temp if a better, collision-free position is found.
     Returns the updated Temp.
     """
-    np.random.seed(40)
+    # np.random.seed(40)
 
     start_node = Node(objects["start"].T[0,3], objects["start"].T[1,3], objects["start"].T[2,3], SO3(objects["panda"].fkine(objects["panda"].q).R))
     dest_node = Node(objects["dest"].T[0,3], objects["dest"].T[1,3], objects["dest"].T[2,3], SO3(objects["panda"].fkine(objects["panda"].q).R))

@@ -1,5 +1,5 @@
 #!/bin/bash
-iterations=1
+iterations=20
 
 benchmark() {
 	local algNo=$1
@@ -16,13 +16,13 @@ source .venv/bin/activate
 cd RTB_toolbox
 export PYTHONUNBUFFERED=1
 
-for i in {1..$iterations}; do
+for i in $(seq 1 $iterations); do
 	echo "Iteration $i:"
-#	benchmark 12 RRT A
+	benchmark 12 RRT A
 	benchmark 13 RRTstar A
-#	benchmark 12 RRT B
+	benchmark 12 RRT B
 	benchmark 13 RRTstar B
-#	benchmark 12 RRT C
+	benchmark 12 RRT C
 	benchmark 13 RRTstar C
 done
 

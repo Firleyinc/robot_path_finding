@@ -1,4 +1,0 @@
-Execution 2025-06-16 01:29:23.841473:
-pybullet build time: Jan 29 2025 23:16:28
-Start point: [ 4.84046815e-01 -6.46597923e-17  2.12629775e-01], dest point: [-0.49041187 -0.00293996  0.11924733].
-Beggining the process of validating the robot pose...
